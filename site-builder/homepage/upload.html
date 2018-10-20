@@ -1,0 +1,79 @@
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+	<title>PVPA - Uploader</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+	<link rel="stylesheet" href="assets/css/main.css" />
+	<!--[if lte IE 9]><divnk rel="stylesheet" href="assets/css/ie9.css" /><![endif]-->
+	<!--[if lte IE 8]><divnk rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+</head>
+<body>
+	<h1>UPLOADER - MONTHLY PHOTO TALKS</h1>
+	<div>Submit your photos for the PVPA monthly meeting</div>
+	<p>Each member may upload a maximum of four (4) images for the Photo Talk section of the monthly meeting. <span style="color:#ffff99;">The cutoff for uploads is MIDNIGHT TUESDAY, the week of the meeting.</span></p>
+	<form>
+		<div>
+			<label for="firstname">First Name</label>
+			<input type="text" id="firstname" name="firstname"/>
+		</div>
+		<div>
+			<label for="lastname">Last Name</label>
+			<input type="text" id="lastname" name="lastname"/>
+		</div>
+		<div>
+			<label for="email">Email</label>
+			<input type="email" id="email" name="email"/>
+		</div>
+		<div>
+			<label for="month">Month</label>
+			<select id="month" name="month" required="" style="width:150px">
+					<option value=""></option>
+					<option value="January">January</option>
+					<option value="February">February</option>
+					<option value="March">March</option>
+					<option value="April">April</option>
+					<option value="May">May</option>
+					<option value="June">June</option>
+					<option value="July">July</option>
+					<option value="August">August</option>
+					<option value="September">September</option>
+					<option value="October">October</option>
+					<option value="November">November</option>
+					<option value="December">December</option>
+			</select>
+		</div>
+		<div>
+			<label for="photo1">Photo #1</label>
+			<input type="file"
+			id="photo1" name="photo1"
+			accept="image/png, image/jpeg" />
+		</div>
+		<div>
+			<label for="photo2">Photo #2</label>
+			<input type="file"
+			id="photo2" name="photo2"
+			accept="image/png, image/jpeg" />
+		</div>
+		<div>
+			<label for="photo3">Photo #3</label>
+			<input type="file"
+			id="photo3" name="photo3"
+			accept="image/png, image/jpeg" />
+		</div>
+		<div>
+			<label for="photo4">Photo #4</label>
+			<input type="file"
+			id="photo4" name="photo4"
+			accept="image/png, image/jpeg" />
+		</div>
+		<div><button id="submit" type="submit">UPLOAD</button></div>
+	</form>
+	<script src="assets/js/jquery.min.js"></script>
+	<script src="assets/js/skel.min.js"></script>
+	<script src="assets/js/util.js"></script>
+	<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+	<script src="assets/js/main.js"></script>
+
+</body>
+</html>
