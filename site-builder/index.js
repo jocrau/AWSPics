@@ -124,7 +124,6 @@ function uploadAlbumSite(title, pictures, metadata) {
         for (var i = pictures.length - 1; i >= 0; i--) {
           picturesHTML += "\t\t\t\t\t\t<article>\n" +
                           "\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"/pics/resized/1200x750/" + pictures[i] + "\" data-position=\"center\"><img class=\"lazy\" src=\"assets/css/images/placeholder.png\" data-original=\"/pics/resized/360x225/" + pictures[i] + "\" width=\"360\" height=\"225\"/></a>\n" +
-                          "<p><a href=\"/pics/original/" + pictures[i] + "\" download>High Resolution Download</a></p>\n" +
                           "\t\t\t\t\t\t</article>";
         }
         body = body.toString().replace(/\{title\}/g, renderedTitle)
