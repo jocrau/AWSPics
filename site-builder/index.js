@@ -7,218 +7,183 @@ var fs = require('fs');
 var mime = require('mime');
 var path = require('path');
 var yaml = require('js-yaml');
+var _ = require('lodash');
 
 var walk = function(dir, done) {
-  var results = [];
-  fs.readdir(dir, function(err, list) {
-    if (err) return done(err);
-    var pending = list.length;
-    if (!pending) return done(null, results);
-    list.forEach(function(file) {
-      file = path.resolve(dir, file);
-      fs.stat(file, function(err, stat) {
-        if (stat && stat.isDirectory()) {
-          walk(file, function(err, res) {
-            results = results.concat(res);
-            if (!--pending) done(null, results);
-          });
-        } else {
-          results.push(file);
-          if (!--pending) done(null, results);
-        }
-      });
-    });
-  });
+	var results = [];
+	fs.readdir(dir, function(err, list) {
+		if (err) return done(err);
+		var pending = list.length;
+		if (!pending) return done(null, results);
+		list.forEach(function(file) {
+			file = path.resolve(dir, file);
+			fs.stat(file, function(err, stat) {
+				if (stat && stat.isDirectory()) {
+					walk(file, function(err, res) {
+						results = results.concat(res);
+						if (!--pending) done(null, results);
+					});
+				} else {
+					results.push(file);
+					if (!--pending) done(null, results);
+				}
+			});
+		});
+	});
 };
 
-function stripPrefix(object) {
-  return object.Key.replace('pics/original/', '');
+function getAlbums(objects) {	
+	return _.sortBy(_.values(_.reduce(objects, function(acc, object) {
+		var matches = object.Key.match(/^.*\/(.*)\/(.*)\/([^\/]*)\/(photo[1-4])$/i);
+		if (matches != null) {
+			var [key, year, month, albumName, fileName, fileType] = matches;			
+			var image = {key: key, year: year, month: month, albumName: albumName, fileName: fileName, fileType: fileType};
+			if (acc[albumName] == undefined) {
+				acc[albumName] = {};
+				acc[albumName]["albumName"] =  albumName;
+				acc[albumName]["year"] =  year;
+				acc[albumName]["month"] =  month;
+				acc[albumName]["images"] = [image];
+			} else {
+				acc[albumName]["images"].push(image);
+			}
+		}
+		return acc;
+	}, {})), ["albumName"]);
 }
 
-function folderName(path) {
-  return path.split('/')[0];
+function uploadHomepageSite(albums) {
+	var dir = 'homepage';
+	walk(dir, function(err, files) {
+		if (err) throw err;
+
+		async.map(files, function(f, cb) {
+			var body = fs.readFileSync(f);
+
+			if (path.basename(f) == 'error.html') {
+				body = body.toString().replace(/\{website\}/g, process.env.WEBSITE);
+			} else if (path.basename(f) == 'index.html') {
+				var picturesHTML = _.reduce(albums, function(picturesHTML, album) {
+					var teaserImage = album["images"][0];
+					return picturesHTML + "\t\t\t\t\t\t<article class=\"thumb\">\n" +
+					"\t\t\t\t\t\t\t<a href=\"/" + album.year + "/" + album.month + "/" + album.albumName + "/index.html\" class=\"image\"><img src=\"/pics/resized/" + teaserImage.year + "/" + teaserImage.month + "/" + album.albumName + "/360x225/" + teaserImage.fileName + "\" alt=\"\" /></a>\n" +
+					"\t\t\t\t\t\t\t<h2>" + album.albumName.replace(/_/g, ' ') + "</h2>\n" +
+					"\t\t\t\t\t\t</article>\n";
+				}, "")
+				body = body.toString().replace(/\{title\}/g, process.env.WEBSITE_TITLE).replace(/\{pictures\}/g, picturesHTML);
+			}
+
+			var options = {
+				Bucket: process.env.SITE_BUCKET,
+				Key: path.relative(dir, f),
+				Body: body,
+				ContentType: mime.lookup(path.extname(f))
+			};
+
+			s3.putObject(options, cb);
+		}, function(err, results) {
+			if (err) console.log(err, err.stack);
+		});
+	});
 }
 
-function getAlbums(data) {
-  var objects = data.Contents.sort(function(a,b){
-    return b.LastModified - a.LastModified;
-  }).map(stripPrefix);
-  var albums = objects.map(folderName);
-  // Deduplicate albums
-  albums = albums.filter(function(item, pos) {
-    return albums.indexOf(item) == pos;
-  });
+function uploadAlbumSite(prev, album, next) {
+	var dir = 'album';
+	walk(dir, function(err, files) {
+		if (err) throw err;
 
-  var pictures = albums.map(function(album){
-    return objects.filter(function(object){
-      return object.startsWith(album + "/") && object.endsWith('.jpg');
-    });
-  });
+		async.map(files, function(f, cb) {
+			var body = fs.readFileSync(f);
 
-  return {albums: albums, pictures: pictures};
-}
+			if (path.basename(f) == 'index.html') {
+				
+				var images = _.orderBy(album['images'], 'fileName');
+				var picturesHTML = _.reduce(images, function(picturesHTML, image) {
+					return picturesHTML + "\t\t\t\t\t\t<article>\n" +
+					"\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"/pics/resized/" + image.year + "/" + image.month + "/" + album.albumName + "/1200x750/" + image.fileName + "\" data-position=\"center\"><img src=\"/pics/resized/" + image.year + "/" + image.month + "/" + album.albumName + "/360x225/" + image.fileName + "\"  width=\"360\" height=\"225\"/></a>\n" +
+					"\t\t\t\t\t\t</article>";
+				}, "")
+				var navigationHTML = '';
+				if (prev != undefined) navigationHTML += '\t\t\t\t\t\t<p>Previous: <a href="/' + prev.year + '/' + prev.month + '/' + prev.albumName + '/index.html">' + prev.albumName + '</a></p>\n';
+				if (next != undefined) navigationHTML += '\t\t\t\t\t\t<p>Next: <a href="/' + next.year + '/' + next.month + '/' + next.albumName + '/index.html">' + next.albumName + '</a></p>\n';
+				body = body.toString()
+				.replace(/\{title\}/g, album.albumName.replace(/_/g, ' '))
+				.replace(/\{pictures\}/g, picturesHTML)
+				.replace(/\{navigation\}/g, navigationHTML);
+			}
 
-function uploadHomepageSite(albums, pictures, metadata) {
-  var dir = 'homepage';
-  walk(dir, function(err, files) {
-    if (err) throw err;
+			var options = {
+				Bucket: process.env.SITE_BUCKET,
+				Key: album.year + '/' + album.month + '/' + album.albumName + "/" + path.relative(dir, f),
+				Body: body,
+				ContentType: mime.lookup(path.extname(f))
+			};
 
-    async.map(files, function(f, cb) {
-      var body = fs.readFileSync(f);
-
-      if (path.basename(f) == 'error.html') {
-        body = body.toString().replace(/\{website\}/g, process.env.WEBSITE);
-      } else if (path.basename(f) == 'index.html') {
-        var picturesHTML = '';
-        for (var i = 0; i < albums.length; i++) {
-          var albumTitle = albums[i];
-          if (metadata[i] && metadata[i].title) {
-            albumTitle = metadata[i].title;
-          }
-          picturesHTML += "\t\t\t\t\t\t<article class=\"thumb\">\n" +
-                          "\t\t\t\t\t\t\t<a href=\"" + albums[i] + "/index.html\" class=\"image\"><img src=\"/pics/resized/1200x750/" + pictures[i][0] + "\" alt=\"\" /></a>\n" +
-                          "\t\t\t\t\t\t\t<h2>" + albumTitle + "</h2>\n" +
-                          "\t\t\t\t\t\t</article>\n";
-        }
-        body = body.toString().replace(/\{title\}/g, process.env.WEBSITE_TITLE)
-                              .replace(/\{pictures\}/g, picturesHTML);
-      }
-
-      var options = {
-        Bucket: process.env.SITE_BUCKET,
-        Key: path.relative(dir, f),
-        Body: body,
-        ContentType: mime.lookup(path.extname(f))
-      };
-
-      s3.putObject(options, cb);
-    }, function(err, results) {
-      if (err) console.log(err, err.stack);
-    });
-  });
-}
-
-function uploadAlbumSite(title, pictures, metadata) {
-  var dir = 'album';
-  walk(dir, function(err, files) {
-    if (err) throw err;
-
-    async.map(files, function(f, cb) {
-      var body = fs.readFileSync(f);
-
-      if (path.basename(f) == 'index.html') {
-        // Defaults
-        var renderedTitle = title,
-            comment1 = '';
-            comment2 = '';
-
-        // Metadata
-        if (metadata) {
-          if (metadata.title) renderedTitle = metadata.title;
-          if (metadata.comment1) comment1 = metadata.comment1;
-          if (metadata.comment2) comment2 = metadata.comment2;
-        }
-
-        // Pictures
-        var picturesHTML = '';
-        for (var i = pictures.length - 1; i >= 0; i--) {
-          picturesHTML += "\t\t\t\t\t\t<article>\n" +
-                          "\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"/pics/resized/1200x750/" + pictures[i] + "\" data-position=\"center\"><img class=\"lazy\" src=\"assets/css/images/placeholder.png\" data-original=\"/pics/resized/360x225/" + pictures[i] + "\" width=\"360\" height=\"225\"/></a>\n" +
-                          "\t\t\t\t\t\t</article>";
-        }
-        body = body.toString().replace(/\{title\}/g, renderedTitle)
-                              .replace(/\{comment1\}/g, comment1)
-                              .replace(/\{comment2\}/g, comment2)
-                              .replace(/\{pictures\}/g, picturesHTML);
-      }
-
-      var options = {
-        Bucket: process.env.SITE_BUCKET,
-        Key: title + "/" + path.relative(dir, f),
-        Body: body,
-        ContentType: mime.lookup(path.extname(f))
-      };
-
-      s3.putObject(options, cb);
-    }, function(err, results) {
-      if (err) console.log(err, err.stack);
-    });
-  });
+			s3.putObject(options, cb);
+		}, function(err, results) {
+			if (err) console.log(err, err.stack);
+		});
+	});
 }
 
 function invalidateCloudFront() {
-  cloudfront.listDistributions(function(err, data) {
-    // Handle error
-    if (err) {
-      console.log(err, err.stack);
-      return;
-    }
+	cloudfront.listDistributions(function(err, data) {
+		// Handle error
+		if (err) {
+			console.log(err, err.stack);
+			return;
+		}
 
-    // Get distribution ID from domain name
-    var distributionID = data.Items.find(function (d) {
-      return d.DomainName == process.env.CLOUDFRONT_DISTRIBUTION_DOMAIN;
-    }).Id;
+		// Get distribution ID from domain name
+		var distributionID = data.Items.find(function (d) {
+			return d.DomainName == process.env.CLOUDFRONT_DISTRIBUTION_DOMAIN;
+		}).Id;
 
-    // Create invalidation
-    cloudfront.createInvalidation({
-      DistributionId: distributionID,
-      InvalidationBatch: {
-        CallerReference: 'site-builder-' + Date.now(),
-        Paths: {
-          Quantity: 1,
-          Items: [
-            '/*'
-          ]
-        }
-      }
-    }, function(err, data) {
-      if (err) console.log(err, err.stack);
-    });
-  });
-}
-
-function getAlbumMetadata(album, cb) {
-  s3.getObject({
-    "Bucket": process.env.ORIGINAL_BUCKET,
-    "Key": "pics/original/" + album + "/metadata.yml"
-  }, function(err, data) {
-    if (err) {
-      cb(null, null);
-    } else {
-      try {
-        var doc = yaml.safeLoad(data.Body.toString());
-        cb(null, doc);
-      } catch (err) {
-        cb(null, null);
-      }
-    }
-  });
+		// Create invalidation
+		cloudfront.createInvalidation({
+			DistributionId: distributionID,
+			InvalidationBatch: {
+				CallerReference: 'site-builder-' + Date.now(),
+				Paths: {
+					Quantity: 1,
+					Items: [
+						'/*'
+					]
+				}
+			}
+		}, function(err, data) {
+			if (err) console.log(err, err.stack);
+		});
+	});
 }
 
 exports.handler = function(event, context) {
-  // List all bucket objects
-  s3.listObjectsV2({Bucket: process.env.ORIGINAL_BUCKET}, function(err, data) {
-    // Handle error
-    if (err) {
-      console.log(err, err.stack);
-      return;
-    }
+	var prefix = 'pics/original/2018/10/';
+	
+	// List all bucket objects
+	var params = {
+		Bucket: process.env.ORIGINAL_BUCKET,
+		Prefix: prefix
+	};
+	s3.listObjectsV2(params, function(err, data) {
+		//	console.log("data ", JSON.stringify(data));
 
-    // Parse albums
-    var albumsAndPictures = getAlbums(data);
+		if (err) {
+			console.log(err, err.stack);
+			return;
+		}
+		
+		var albums = getAlbums(data.Contents);
+		//console.log("albums ", JSON.stringify(albums));
+		
+		uploadHomepageSite(albums);
+		for (var i = 0; i < albums.length; i++) {
+		    uploadAlbumSite(albums[i-1], albums[i], albums[i+1]);
+		}	
 
-    // Get metadata for all albums
-    async.map(albumsAndPictures.albums, getAlbumMetadata, function(err, metadata) {
-      // Upload homepage site
-      uploadHomepageSite(albumsAndPictures.albums, albumsAndPictures.pictures, metadata);
-
-      // Upload album sites
-      for (var i = albumsAndPictures.albums.length - 1; i >= 0; i--) {
-        uploadAlbumSite(albumsAndPictures.albums[i], albumsAndPictures.pictures[i], metadata[i]);
-      }
-
-      // Invalidate CloudFront
-      invalidateCloudFront();
-    });
-  });
+	});
+  
+	// Invalidate CloudFront
+	invalidateCloudFront();
+  
 };

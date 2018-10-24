@@ -52,6 +52,9 @@ exports.handler = function(event, context) {
       async.eachLimit(resizePairs, 4, function(resizePair, cb) {
         var config = resizePair[0];
         var image = resizePair[1];
+		var match = image.originalKey.match(/pics\/original\/(.*\/)([^\/]*)/i);
+		var filePath = match[1];
+		var fileName = match[2];
         var width = config.split('x')[0]
         var height = config.split('x')[1]
         var operation = im(image.buffer).resize(width, height, '^');
@@ -64,7 +67,7 @@ exports.handler = function(event, context) {
           } else {
             s3.putObject({
               "Bucket": process.env.RESIZED_BUCKET,
-              "Key": "pics/resized/" + config + "/" + image.originalKey.replace("pics/original/", ""),
+              "Key": "pics/resized/" + filePath + config + "/" + fileName,
               "Body": buffer,
               "ContentType": image.contentType
             }, function(err) {

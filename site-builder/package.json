@@ -8,6 +8,7 @@
   "dependencies": {
     "async": "^2.1.4",
     "mime": "^1.3.6",
-    "js-yaml": "^3.8.4"
+    "js-yaml": "^3.8.4",
+	"s3-zip": "^1.0.4"
   }
 }
