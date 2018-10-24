@@ -1,12 +1,14 @@
 var AWS = require("aws-sdk");
 var s3 = new AWS.S3();
 var cloudfront = new AWS.CloudFront();
+var ses = new AWS.SES();
 
 var async = require('async');
 var fs = require('fs');
 var mime = require('mime');
 var path = require('path');
 var yaml = require('js-yaml');
+var moment = require('moment');
 var _ = require('lodash');
 
 var walk = function(dir, done) {
@@ -36,8 +38,8 @@ function getAlbums(objects) {
 	return _.sortBy(_.values(_.reduce(objects, function(acc, object) {
 		var matches = object.Key.match(/^.*\/(.*)\/(.*)\/([^\/]*)\/(photo[1-4])$/i);
 		if (matches != null) {
-			var [key, year, month, albumName, fileName, fileType] = matches;			
-			var image = {key: key, year: year, month: month, albumName: albumName, fileName: fileName, fileType: fileType};
+			var [key, year, month, albumName, fileName] = matches;			
+			var image = {fileName: fileName};
 			if (acc[albumName] == undefined) {
 				acc[albumName] = {};
 				acc[albumName]["albumName"] =  albumName;
@@ -66,7 +68,7 @@ function uploadHomepageSite(albums) {
 				var picturesHTML = _.reduce(albums, function(picturesHTML, album) {
 					var teaserImage = album["images"][0];
 					return picturesHTML + "\t\t\t\t\t\t<article class=\"thumb\">\n" +
-					"\t\t\t\t\t\t\t<a href=\"/" + album.year + "/" + album.month + "/" + album.albumName + "/index.html\" class=\"image\"><img src=\"/pics/resized/" + teaserImage.year + "/" + teaserImage.month + "/" + album.albumName + "/360x225/" + teaserImage.fileName + "\" alt=\"\" /></a>\n" +
+					"\t\t\t\t\t\t\t<a href=\"/" + album.year + "/" + album.month + "/" + album.albumName + "/index.html\" class=\"image\"><img src=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/360x225/" + teaserImage.fileName + "\" alt=\"\" /></a>\n" +
 					"\t\t\t\t\t\t\t<h2>" + album.albumName.replace(/_/g, ' ') + "</h2>\n" +
 					"\t\t\t\t\t\t</article>\n";
 				}, "")
@@ -100,12 +102,12 @@ function uploadAlbumSite(prev, album, next) {
 				var images = _.orderBy(album['images'], 'fileName');
 				var picturesHTML = _.reduce(images, function(picturesHTML, image) {
 					return picturesHTML + "\t\t\t\t\t\t<article>\n" +
-					"\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"/pics/resized/" + image.year + "/" + image.month + "/" + album.albumName + "/1200x750/" + image.fileName + "\" data-position=\"center\"><img src=\"/pics/resized/" + image.year + "/" + image.month + "/" + album.albumName + "/360x225/" + image.fileName + "\"  width=\"360\" height=\"225\"/></a>\n" +
+					"\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/1200x750/" + image.fileName + "\" data-position=\"center\"><img src=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/360x225/" + image.fileName + "\"  width=\"360\" height=\"225\"/></a>\n" +
 					"\t\t\t\t\t\t</article>";
 				}, "")
 				var navigationHTML = '';
-				if (prev != undefined) navigationHTML += '\t\t\t\t\t\t<p>Previous: <a href="/' + prev.year + '/' + prev.month + '/' + prev.albumName + '/index.html">' + prev.albumName + '</a></p>\n';
-				if (next != undefined) navigationHTML += '\t\t\t\t\t\t<p>Next: <a href="/' + next.year + '/' + next.month + '/' + next.albumName + '/index.html">' + next.albumName + '</a></p>\n';
+				if (prev != undefined) navigationHTML += '\t\t\t\t\t\t<p>Previous: <a href="/' + prev.year + '/' + prev.month + '/' + prev.albumName + '/index.html">' + prev.albumName.replace(/_/g, ' ') + '</a></p>\n';
+				if (next != undefined) navigationHTML += '\t\t\t\t\t\t<p>Next: <a href="/' + next.year + '/' + next.month + '/' + next.albumName + '/index.html">' + next.albumName.replace(/_/g, ' ') + '</a></p>\n';
 				body = body.toString()
 				.replace(/\{title\}/g, album.albumName.replace(/_/g, ' '))
 				.replace(/\{pictures\}/g, picturesHTML)
@@ -157,8 +159,51 @@ function invalidateCloudFront() {
 	});
 }
 
+function nextMeetingDate() {
+	var now            = moment();
+	var meetingDate   = now.clone();
+	var month         = now.month();
+	meetingDate.endOf("month").startOf("isoweek").add(3, "days").hour(19);
+	if (meetingDate.month() !== month) meetingDate.subtract(7, "days");
+	return meetingDate;
+}
+
+function sendEmail(albums) {
+	
+	var body = _.reduce(albums, function(acc, album) {
+		return acc + album.albumName.replace(/_/g, ' ') + ' (' + (album.images != undefined ? album.images.length : '0')  + ' images)\n'; 
+	}, '');
+	
+    var params = {
+        Destination: {
+            ToAddresses: [process.env.EMAIL]
+        },
+        Message: {
+            Body: {
+                Text: {
+                    Data: 'The PVPA Album for the ' + albums[0].year + '/' + albums[0].month + ' meeting was successfully recreated. Here is the data we have so far:\n\n' + body
+                }
+            },
+            Subject: {
+                Data: "PVPA - Album Recreated"
+            }
+        },
+        Source: process.env.EMAIL
+    };
+	
+    var email = ses.sendEmail(params, function(err, data){
+        if(err) console.log(err);
+    });
+}
+
+
+
 exports.handler = function(event, context) {
-	var prefix = 'pics/original/2018/10/';
+	
+	var meetingDate = nextMeetingDate().add(1, "days");
+	var year   = meetingDate.format('YYYY');
+	var month  = meetingDate.format('M');			
+	var prefix = 'pics/original/' + year + '/' + month + '/';
 	
 	// List all bucket objects
 	var params = {
@@ -181,9 +226,10 @@ exports.handler = function(event, context) {
 		    uploadAlbumSite(albums[i-1], albums[i], albums[i+1]);
 		}	
 
+  		// Invalidate CloudFront
+		invalidateCloudFront();
+	
+		sendEmail(albums);
+		
 	});
-  
-	// Invalidate CloudFront
-	invalidateCloudFront();
-  
 };

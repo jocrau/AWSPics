@@ -22,6 +22,9 @@ Parameters:
   website:
     Description: Actual website
     Type: String
+  email:
+    Description: The email to send a confirmation of a site rebuild to
+    Type: String
   sessionDuration:
     Description: Number of seconds the user has access to the file
     Type: Number
@@ -170,6 +173,7 @@ Resources:
           ORIGINAL_BUCKET: !Ref sourceBucket
           SITE_BUCKET: !Ref webBucket
           WEBSITE: !Ref website
+          EMAIL: !Ref email
       Role: !GetAtt SiteBuilderLambdaRole.Arn
       Timeout: 30
       MemorySize: 1024
@@ -183,6 +187,7 @@ Resources:
       Path: /
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AmazonSNSRole
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:

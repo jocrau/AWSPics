@@ -22,7 +22,7 @@ var main = (function($) { var _ = {
 			layoutDuration: 750,
 
 		// Thumbnails per "row" (must match "misc.thumbnails-per-row" in _vars.scss).
-			thumbnailsPerRow: 2,
+			thumbnailsPerRow: 1,
 
 		// Side of main wrapper (must match "misc.main-side" in _vars.scss).
 			mainSide: 'right'
@@ -654,13 +654,13 @@ var main = (function($) { var _ = {
 		// Calculate new index.
 			var i, c = _.current, l = _.slides.length;
 
-			if (c >= l - 1)
-				i = 0;
-			else
-				i = c + 1;
-
-		// Switch.
-			_.switchTo(i);
+			if (c < l - 1) {
+				i = c + 1;				
+				_.hide();
+				_.switchTo(i);
+			} else {
+				_.show();
+			}
 
 	},
 
@@ -672,13 +672,13 @@ var main = (function($) { var _ = {
 		// Calculate new index.
 			var i, c = _.current, l = _.slides.length;
 
-			if (c <= 0)
-				i = l - 1;
-			else
-				i = c - 1;
-
-		// Switch.
-			_.switchTo(i);
+			if (c > 0) {
+				i = c - 1;			
+				_.hide();
+				_.switchTo(i);
+			} else {
+				_.show();
+			}
 
 	},
 

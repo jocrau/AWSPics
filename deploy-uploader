@@ -1,0 +1,14 @@
+#!/bin/bash -e
+
+if [ -z "$1" ]; then
+  echo "Usage:"
+  echo "  deploy my.bucket.name"
+  echo "The bucket will be used to store the Lambda code when deploying."
+  echo "It will be created if needed"
+  exit 1
+else
+  uploaderBucket=$1
+fi
+
+aws s3 rm "s3://$uploaderBucket/" --recursive >> /dev/null 2>&1 || true
+aws s3 cp ./uploader "s3://$uploaderBucket/" --recursive --exclude "**/.*"

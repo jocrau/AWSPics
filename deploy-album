@@ -3,7 +3,7 @@
 if [ -z "$1" ]; then
   echo "Usage:"
   echo "  deploy my.bucket.name"
-  echo "The bucket will be used to store the Lambda code when deploying."
+  echo "The bucket will be used to store the uploader code when deploying."
   echo "It will be created if needed"
   exit 1
 else
