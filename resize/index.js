@@ -5,12 +5,13 @@ var im = require("gm").subClass({imageMagick: true});
 var s3 = new AWS.S3();
 
 function getImageType(objectContentType) {
-  if (objectContentType === "image/jpeg") {
+  if (objectContentType.indexOf("image/jpeg") !== -1) {
     return "jpeg";
-  } else if (objectContentType === "image/png") {
+  } else if (objectContentType.indexOf("image/png") !== -1) {
     return "png";
   } else {
-    throw new Error("unsupported objectContentType " + objectContentType);
+    return "jpeg" // Let's make an uneducated guess rather than throwing an exception
+	//throw new Error("unsupported objectContentType " + objectContentType);
   }
 }
 
@@ -48,7 +49,7 @@ exports.handler = function(event, context) {
     if (err) {
       context.fail(err);
     } else {
-      var resizePairs = cross(["1200x750", "360x225"], images);
+      var resizePairs = cross(["2048x1536", "640x360"], images);
       async.eachLimit(resizePairs, 4, function(resizePair, cb) {
         var config = resizePair[0];
         var image = resizePair[1];
@@ -58,7 +59,7 @@ exports.handler = function(event, context) {
         var width = config.split('x')[0]
         var height = config.split('x')[1]
         var operation = im(image.buffer).resize(width, height);
-        if (config == "360x225") {
+        if (config == "640x360") {
           operation = operation.gravity('Center').crop(width, height);
         }
         operation.toBuffer(image.imageType, function(err, buffer) {

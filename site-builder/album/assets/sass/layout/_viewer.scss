@@ -67,7 +67,6 @@
 				top: 0;
 				width: 4em;
 				height: 4em;
-				background-image: url('images/close.svg');
 				background-repeat: no-repeat;
 				background-size: 64px 64px;
 				cursor: pointer;
@@ -81,6 +80,9 @@
 					right: 0;
 					background-position: calc(100% - 0.75em) 0.75em;
 				}
+				&:hover {
+					background-image: url('images/close.svg');
+				}
 			}
 
 			.nav-next,
@@ -91,11 +93,13 @@
 				width: 6em;
 				height: 6em;
 				margin-top: -3em;
-				background-image: url('images/arrow.svg');
 				background-position: center;
 				background-repeat: no-repeat;
 				background-size: contain;
 				cursor: pointer;
+				&:hover {
+					background-image: url('images/arrow.svg');
+				}
 			}
 
 			.nav-previous {
@@ -183,7 +187,9 @@
 
 			.inner {
 				.toggle {
-					background-image: url('images/open.svg');
+					&:hover {
+						background-image: url('images/open.svg');
+					}
 				}
 			}
 		}
@@ -208,14 +214,15 @@
 			.inner {
 				.toggle {
 					@include vendor('transition', 'opacity #{_duration(layout)} ease');
-					background-image: url('images/open.svg');
 					opacity: 0;
-
 					@if _misc(main-side) == 'left' {
 						left: 0;
 					}
 					@else {
 						right: 0;
+					}
+					&:hover {
+						background-image: url('images/open.svg');
 					}
 				}
 			}
@@ -237,15 +244,19 @@
 
 				.nav-next,
 				.nav-previous {
-					background-image: url('images/arrow-small.svg');
 					background-size: 32px 32px;
+					&:hover {
+						background-image: url('images/arrow-small.svg');
+					}
 				}
 			}
 
 			body.fullscreen & {
 				.inner {
 					.toggle {
-						background-image: url('images/open-small.svg');
+						&:hover {
+							background-image: url('images/open-small.svg');
+						}
 					}
 				}
 			}
@@ -258,8 +269,10 @@
 
 			.inner {
 				.toggle {
-					background-image: url('images/close-small.svg') !important;
 					background-size: 32px 32px;
+					&:hover {
+						background-image: url('images/close-small.svg') !important;
+					}
 				}
 			}
 

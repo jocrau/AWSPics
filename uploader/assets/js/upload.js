@@ -1,6 +1,5 @@
 (function($) {
 
-	var now            = moment();
 	var meetingDate;
 
 	var bucketName     = 'pvpa-source';
@@ -25,11 +24,11 @@
 				return console.info('Album already exists. Skipping creation.');
 			}
 			if (err.code !== 'NotFound') {
-				return alert('There was an error creating your album: ' + err.message);
+				throw err;
 			}
 			s3.putObject({Key: albumKey}, function(err, data) {
 				if (err) {
-					return alert('There was an error creating your album: ' + err.message);
+					throw err;
 				}
 				console.info('Successfully created album.');
 			});
@@ -39,8 +38,11 @@
 	
 	function addPhoto(albumKey, file, index) {
 		var fileName      = file.name;
-		var suffix        = fileName.match(/\.(jpg|jpeg|png)$/i)[1];
-		if (suffix == undefined) return alert('Only JPEG and PNG files are allowed.');
+		var matches        = fileName.match(/\.(jpeg|jpg|png)$/i);
+		if (matches == undefined) {
+			throw {message: 'Only JPEG and PNG files are allowed.'};
+		}
+		var suffix = matches[1];
 		var photoKey      = albumKey + 'photo' + index;
 		var mimeType = 'image/' + (suffix == 'png' ? 'png' : 'jpeg');
 		s3.upload({
@@ -50,43 +52,54 @@
 			ACL: 'public-read'
 		}, function(err, data) {
 			if (err) {
-				return alert('There was an error uploading your photo: ', err.message);
+				throw err;
+				return false;
+			} else {
+				console.info('Successfully uploaded photo to ' + photoKey);
 			}
-			console.log('Successfully uploaded photo to ' + photoKey);
 		});
+		return true;
 	}
 	
 	$('#upload').click(function(event) {
 		event.preventDefault();
-		var fullName     = $('#name').val().trim();
-		if (fullName      == '') { return alert('The name cannot be empty.') }
-		if (fullName.indexOf('/') !== -1) {
-			return alert('The name cannot contain slashes.');
-		}
+		try {
+			var fullName     = $('#name').val().trim();
+			if (fullName      == '') throw {message: 'The name cannot be empty.'};
+			if (fullName.indexOf('/') !== -1) {
+				throw {message: 'The name cannot contain slashes.'};
+			}
 		
-		var meetingYear   = meetingDate.format('YYYY');
-		var meetingMonth  = meetingDate.format('M');			
-		var albumKey      = 'pics/original/' + meetingYear + '/' + meetingMonth + '/' + fullName.replace(/\s/g, "_") + '/';
+			var meetingYear   = meetingDate.format('YYYY');
+			var meetingMonth  = meetingDate.format('M');			
+			var albumKey      = 'pics/original/' + meetingYear + '/' + meetingMonth + '/' + fullName.replace(/\s/g, "_") + '/';
 
-		createAlbum(albumKey);
-		
-		for (var i        = 1; i <= 4; i++) {
-			var file         = document.getElementById('photo' + i).files[0];
-			if (file !== undefined) addPhoto(albumKey, file, i);
+			createAlbum(albumKey);
+			for (var i        = 1; i <= 4; i++) {
+				var file         = document.getElementById('photo' + i).files[0];
+				if (file !== undefined) addPhoto(albumKey, file, i);
+			}
 		}
-		
+		catch(err) {
+			alert('There was an error uploading your photos. Please contact the web site admin. This is the error message:\n\n' + err.message);
+		}
 	});
 	
-	function nextMeetingDate(now) {
-		var meetingDate   = now.clone();
-		var month         = now.month();
-		meetingDate.endOf("month").startOf("isoweek").add(3, "days").hour(19);
-		if (meetingDate.month() !== month) meetingDate.subtract(7, "days");
-		return meetingDate;
+	function lastThursdayOfMonth(date) {
+		var lastThursdayOfMonthDate   = date.clone().endOf("month").startOf("isoweek").add(3, "days").hour(19);
+		if (lastThursdayOfMonthDate.month() !== date.month()) lastThursdayOfMonthDate.subtract(7, "days");
+		return lastThursdayOfMonthDate;
+	}
+	
+	function nextMeetingDate() {
+		var now            = moment();
+		var resultDate = lastThursdayOfMonth(now);
+		if (resultDate.isBefore(now)) resultDate = lastThursdayOfMonth(now.add(1, 'month'));
+		return resultDate;			
 	}
 	
 	function init() {
-		meetingDate       = nextMeetingDate(now);
+		meetingDate       = nextMeetingDate();
 		$('#meeting-month').text(meetingDate.format('MMMM'));
 	}
 	

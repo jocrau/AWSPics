@@ -917,13 +917,15 @@ body.is-loading-1 #main {
   top: 0;
   width: 4em;
   height: 4em;
-  background-image: url("images/close.svg");
   background-repeat: no-repeat;
   background-size: 64px 64px;
   cursor: pointer;
   z-index: 1;
   right: 0;
   background-position: calc(100% - 0.75em) 0.75em;
+}
+#viewer .inner .toggle:hover {
+  background-image: url("images/close.svg");
 }
 #viewer .inner .nav-next,
 #viewer .inner .nav-previous {
@@ -933,11 +935,14 @@ body.is-loading-1 #main {
   width: 6em;
   height: 6em;
   margin-top: -3em;
-  background-image: url("images/arrow.svg");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
   cursor: pointer;
+}
+#viewer .inner .nav-next:hover,
+#viewer .inner .nav-previous:hover {
+  background-image: url("images/arrow.svg");
 }
 #viewer .inner .nav-previous {
   -moz-transform: scaleX(-1);
@@ -1024,7 +1029,7 @@ body.is-loading-1 #main {
 body.fullscreen #viewer {
   width: 100%;
 }
-body.fullscreen #viewer .inner .toggle {
+body.fullscreen #viewer .inner .toggle:hover {
   background-image: url("images/open.svg");
 }
 body.is-loading-1 #viewer {
@@ -1047,9 +1052,11 @@ body.is-loading-2 #viewer .slide {
     -webkit-transition: opacity 0.75s ease;
     -ms-transition: opacity 0.75s ease;
     transition: opacity 0.75s ease;
-    background-image: url("images/open.svg");
     opacity: 0;
     right: 0;
+  }
+  #viewer .inner .toggle:hover {
+    background-image: url("images/open.svg");
   }
   body.fullscreen #viewer .inner .toggle {
     opacity: 1;
@@ -1061,10 +1068,13 @@ body.is-loading-2 #viewer .slide {
   }
   #viewer .inner .nav-next,
 #viewer .inner .nav-previous {
-    background-image: url("images/arrow-small.svg");
     background-size: 32px 32px;
   }
-  body.fullscreen #viewer .inner .toggle {
+  #viewer .inner .nav-next:hover,
+#viewer .inner .nav-previous:hover {
+    background-image: url("images/arrow-small.svg");
+  }
+  body.fullscreen #viewer .inner .toggle:hover {
     background-image: url("images/open-small.svg");
   }
 }
@@ -1081,8 +1091,10 @@ body.is-loading-2 #viewer .slide {
     opacity: 0;
   }
   #viewer .inner .toggle {
-    background-image: url("images/close-small.svg") !important;
     background-size: 32px 32px;
+  }
+  #viewer .inner .toggle:hover {
+    background-image: url("images/close-small.svg") !important;
   }
   body.fullscreen #viewer {
     -moz-transition-delay: 0.5s;

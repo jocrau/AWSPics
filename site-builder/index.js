@@ -68,7 +68,7 @@ function uploadHomepageSite(albums) {
 				var picturesHTML = _.reduce(albums, function(picturesHTML, album) {
 					var teaserImage = album["images"][0];
 					return picturesHTML + "\t\t\t\t\t\t<article class=\"thumb\">\n" +
-					"\t\t\t\t\t\t\t<a href=\"/" + album.year + "/" + album.month + "/" + album.albumName + "/index.html\" class=\"image\"><img src=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/360x225/" + teaserImage.fileName + "\" alt=\"\" /></a>\n" +
+					"\t\t\t\t\t\t\t<a href=\"/" + album.year + "/" + album.month + "/" + album.albumName + "/index.html\" class=\"image\"><img src=\"pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/640x360/" + teaserImage.fileName + "\" alt=\"\" /></a>\n" +
 					"\t\t\t\t\t\t\t<h2>" + album.albumName.replace(/_/g, ' ') + "</h2>\n" +
 					"\t\t\t\t\t\t</article>\n";
 				}, "")
@@ -102,7 +102,7 @@ function uploadAlbumSite(prev, album, next) {
 				var images = _.orderBy(album['images'], 'fileName');
 				var picturesHTML = _.reduce(images, function(picturesHTML, image) {
 					return picturesHTML + "\t\t\t\t\t\t<article>\n" +
-					"\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/1200x750/" + image.fileName + "\" data-position=\"center\"><img src=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/360x225/" + image.fileName + "\"  width=\"360\" height=\"225\"/></a>\n" +
+					"\t\t\t\t\t\t\t<a class=\"thumbnail\" href=\"pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/2048x1536/" + image.fileName + "\" data-position=\"center\"><img src=\"/pics/resized/" + album.year + "/" + album.month + "/" + album.albumName + "/640x360/" + image.fileName + "\"  width=\"640\" height=\"360\"/></a>\n" +
 					"\t\t\t\t\t\t</article>";
 				}, "")
 				var navigationHTML = '';
@@ -159,16 +159,20 @@ function invalidateCloudFront() {
 	});
 }
 
-function nextMeetingDate() {
-	var now            = moment();
-	var meetingDate   = now.clone();
-	var month         = now.month();
-	meetingDate.endOf("month").startOf("isoweek").add(3, "days").hour(19);
-	if (meetingDate.month() !== month) meetingDate.subtract(7, "days");
-	return meetingDate;
+function lastThursdayOfMonth(date) {
+	var lastThursdayOfMonthDate   = date.clone().endOf("month").startOf("isoweek").add(3, "days").hour(19);
+	if (lastThursdayOfMonthDate.month() !== date.month()) lastThursdayOfMonthDate.subtract(7, "days");
+	return lastThursdayOfMonthDate;
 }
 
-function sendEmail(albums) {
+function nextMeetingDate() {
+	var now            = moment();
+	var resultDate = lastThursdayOfMonth(now);
+	if (resultDate.isBefore(now)) resultDate = lastThursdayOfMonth(now.add(1, 'month'));
+	return resultDate;			
+}
+
+function sendEmail(year, month, albums) {
 	
 	var body = _.reduce(albums, function(acc, album) {
 		return acc + album.albumName.replace(/_/g, ' ') + ' (' + (album.images != undefined ? album.images.length : '0')  + ' images)\n'; 
@@ -181,7 +185,7 @@ function sendEmail(albums) {
         Message: {
             Body: {
                 Text: {
-                    Data: 'The PVPA Album for the ' + albums[0].year + '/' + albums[0].month + ' meeting was successfully recreated. Here is the data we have so far:\n\n' + body
+                    Data: 'The PVPA Album for the ' + year + '/' + month + ' meeting was successfully recreated. Here is the data we have so far:\n\n' + body
                 }
             },
             Subject: {
@@ -200,11 +204,11 @@ function sendEmail(albums) {
 
 exports.handler = function(event, context) {
 	
-	var meetingDate = nextMeetingDate().add(1, "days");
+	var meetingDate = nextMeetingDate();
 	var year   = meetingDate.format('YYYY');
 	var month  = meetingDate.format('M');			
 	var prefix = 'pics/original/' + year + '/' + month + '/';
-	
+		
 	// List all bucket objects
 	var params = {
 		Bucket: process.env.ORIGINAL_BUCKET,
@@ -229,7 +233,7 @@ exports.handler = function(event, context) {
   		// Invalidate CloudFront
 		invalidateCloudFront();
 	
-		sendEmail(albums);
+		sendEmail(year, month, albums);
 		
 	});
 };

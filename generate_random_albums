@@ -12,11 +12,6 @@ else
   numberOfAlbums=$1
 fi
 
-echo "Removing all files in web, source & resized buckets"
-for bucket in "$webBucket" "$sourceBucket" "$resizedBucket"; do
-  aws s3 rm --recursive "s3://$bucket" >> /dev/null 2>&1 || true
-done
-
 prevMD5=()
 for (( albumIndex = 0; albumIndex < numberOfAlbums; albumIndex++ )); do
   albumNumber=$RANDOM
@@ -29,6 +24,6 @@ for (( albumIndex = 0; albumIndex < numberOfAlbums; albumIndex++ )); do
       curl -sL https://source.unsplash.com/random -o "$pic"
     done
     prevMD5+=("$(md5sum "$pic" | awk '{print $1}')")
-    aws s3 cp --content-type image/jpeg "$pic" "s3://$sourceBucket/pics/original/2018/10/Album_$albumNumber/photo$picIndex" >> /dev/null 2>&1
+    aws s3 cp --content-type image/jpeg "$pic" "s3://$sourceBucket/pics/original/2018/09/Album_$albumNumber/photo$picIndex" >> /dev/null 2>&1
   done
 done
