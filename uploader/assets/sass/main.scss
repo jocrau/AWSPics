@@ -5,6 +5,30 @@
 @import 'font-awesome.min.css';
 @import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,300italic,400,400italic');
 
+
+progress {
+	/* Reset the default appearance */
+	-webkit-appearance: none;
+	   -moz-appearance: none;
+			appearance: none;
+	
+	/* Get rid of default border in Firefox. */
+	border: none;
+	
+	border: 1px solid #287e6d;
+	background-color: transparent;
+	color: #287e6d;
+	width: 100px;
+	height: 20px;
+}
+
+progress::-moz-progress-bar {
+	background-color: #287e6d; 
+}
+progress::-webkit-progress-value {
+	background-color: #287e6d;
+}
+
 /*
 	Multiverse by HTML5 UP
 	html5up.net | @n33co
